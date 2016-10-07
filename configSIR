@@ -1,0 +1,4 @@
+obs_noise = 1
+n_samples = 10000
+eps = 5
+proposal r_i = 0.1

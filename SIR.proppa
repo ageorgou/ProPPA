@@ -1,0 +1,19 @@
+// Parameters:
+r_i = Uniform(0,1);
+r_r = Uniform(0,1);
+
+// Rates:
+kineticLawOf infect: r_i * S * I;
+kineticLawOf recover: r_r * I;
+
+// System (species definitions):
+S = infect <<;
+I = infect >> + recover <<;
+R = recover >>;
+
+// Initial state:
+S[10]<*>I[5]<*>R[0]
+
+observe(obsSIR);
+infer(fluid);
+configure(configSIR);
