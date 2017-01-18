@@ -79,6 +79,21 @@ def split_observations(obs):
     measurements = [tuple(o[1:]) for o in obs]
     return (times,measurements)
 
+def split_indices(l,lookup):
+    """Return two lists, within and without. within contains the
+    indices of all elements of l that are in lookup, while without
+    contains the remaining elements of l."""
+    within,without = [],[]
+    for (i,v) in enumerate(l):
+        try:
+            ind = lookup.index(v)
+            within.append((i,ind))
+        except ValueError: # v not found in lookup
+            without.append((i,v))
+    return within,without
+
+
+
 # to read configuration file
 def read_configuration(filename):
     config = cp.ConfigParser()

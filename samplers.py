@@ -12,6 +12,7 @@ from fluid_sampler import FluidSampler
 from lna_sampler import LNASampler
 from roulette_metropolis_sampler import RouletteMetropolisSampler
 from abc_sampler import ABCSampler
+from enhanced_abc_sampler import EnhancedABCSampler
 
 sampler_dict = {'direct': FiniteMetropolisSampler,
                 'gibbs': RaoTehGibbsSampler,
@@ -19,7 +20,9 @@ sampler_dict = {'direct': FiniteMetropolisSampler,
                 'ode': FluidSampler,
                 'fluid' : FluidSampler,
                 'lna': LNASampler,
-                'abc': ABCSampler}
+                'abc': ABCSampler,
+                'abc_enhanced': EnhancedABCSampler,
+                'enhanced_abc': EnhancedABCSampler}
 
 def get_sampler(name):
     try:

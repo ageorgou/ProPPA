@@ -12,6 +12,7 @@ class MetropolisSampler(object):
     """
     
     required_conf = ['proposals']
+    supports_enhanced = False
     
 #      A compact model needs:
 #        ordering of species names

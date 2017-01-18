@@ -375,14 +375,12 @@ class ExponentialTerm(DistributionTerm):
                 
     @classmethod
     def from_tokens(cls,tokens):
-        return cls(tokens["shape"],tokens["rate"])
+        return cls(tokens["rate"])
     
     def to_distribution(self):
-        return sp.stats.expon(self.rate)
+        return sp.stats.expon(scale=1/self.rate)
 
-dist_terms = [GaussianTerm,
-              UniformTerm,
-              GammaTerm]
+dist_terms = [GaussianTerm,UniformTerm,GammaTerm,ExponentialTerm]
 for d in dist_terms:
     d.grammar.setParseAction(d.from_tokens)
 dist_grammar = MatchFirst([d.grammar for d in dist_terms])
@@ -605,6 +603,21 @@ class SpeciesDefinition(object):
 
 SpeciesDefinition.grammar.setParseAction(SpeciesDefinition.from_tokens)
 
+class Observable(object):
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    grammar = "observable" + identifier + "=" + expr_grammar + ";"
+    list_grammar = pyparsing.Group(pyparsing.OneOrMore(grammar))
+
+    @classmethod
+    def from_tokens(cls, tokens):
+        """ The parser method for ProPPA rate definitions."""
+        return cls(tokens[1], tokens[3])
+
+Observable.grammar.setParseAction(Observable.from_tokens)
+
 
 class Population(object):
     # pylint: disable=too-few-public-methods
@@ -639,7 +652,7 @@ class ParsedModel(object):
         description for a model.
     """
     def __init__(self, constants, kinetic_laws, species, populations,
-                 obsfile, algorithm, conffile):
+                 obsfile, algorithm, conffile, observables):
         self.constants, self.uncertain = self.split_constants(constants)
         self.kinetic_laws = kinetic_laws
         self.species_defs = species
@@ -647,14 +660,16 @@ class ParsedModel(object):
         self.obsfile = obsfile
         self.algorithm = algorithm
         self.conffile = conffile
+        self.observables = observables
 
     # Note, this parser does not insist on the end of the input text.
     # Which means in theory you could have something *after* the model text,
     # which might indeed be what you are wishing for.
-    grammar = (ConstantDefinition.list_grammar +
-               RateDefinition.list_grammar +
-               SpeciesDefinition.list_grammar +
-               pyparsing.Group(system_grammar) +
+    grammar = (ConstantDefinition.list_grammar('constants') +
+               RateDefinition.list_grammar('rates') +
+               SpeciesDefinition.list_grammar('species') +
+               Optional(Observable.list_grammar('observables')) +
+               pyparsing.Group(system_grammar)('populations') +
                observe_grammar('obsfile') +
                infalg_grammar('algorithm') +
                Optional(conf_grammar('conffile')) )
@@ -665,10 +680,12 @@ class ParsedModel(object):
     @classmethod
     def from_tokens(cls, tokens):
         """ The parser action method for a ProPPA model. """
-        return cls(tokens[0], tokens[1], tokens[2], tokens[3],
+        return cls(tokens['constants'], tokens['rates'],
+                   tokens['species'], tokens['populations'],
                    tokens['obsfile']['file'],
                    tokens['algorithm']['alg'],
-                   tokens['conffile']['file'] if 'conffile' in tokens else None)
+                   tokens['conffile']['file'] if 'conffile' in tokens else None,
+                   tokens['observables'] if 'observables' in tokens else [])
     
     @staticmethod
     def split_constants(constants):
@@ -762,17 +779,18 @@ class ParsedModel(object):
         self.species_order.sort()
         # Read observations from file; if there is a species order mentioned
         # there, enforce it for the rest of the model:
-        self.obs, obs_order = mu.load_observations(self.obsfile)
-        if obs_order is None: # if observations don't label species
+        self.obs, self.obs_order = mu.load_observations(self.obsfile)
+        if self.obs_order is None: # if observations don't label species
             if len(self.obs[0]) - 1 != len(self.species_order): # if some are missing
                 raise mu.ProPPAException("""Only some species are observed --- 
                     I cannot figure out which ones.""")
+            self.observed_species = [i for i in range(len(self.species_order))]
         else: # rearrange the observations to match alphabetical order
-            rearrange = [0] + [obs_order.index(name)+1 for name in self.species_order
-                            if name in obs_order]
+            rearrange = [0] + [self.obs_order.index(name)+1 for name in self.species_order
+                            if name in self.obs_order]
             self.obs = [[o[index] for index in rearrange] for o in self.obs]
             self.observed_species = [i for i in range(len(self.species_order))
-                                        if self.species_order[i] in obs_order]
+                                        if self.species_order[i] in self.obs_order]
         # Updates (stoichiometry matrix):
         self.updates,self.react_order = mu.get_updates(self,self.species_order)
         # Initial state:
@@ -784,8 +802,60 @@ class ParsedModel(object):
 #        self.kinetic_laws.sort(key=lambda r: self.react_order.index(r.lhs))
         # Concrete parameters:
         self.concrete = [(c.lhs,c.rhs.get_value()) for c in self.constants]
-        #should maybe change this in case of references to other variables?
-        
+        #should maybe change this in case of references to other variables?       
+
+    def numerize_enhanced(self):
+        # Gather species names in alphabetical order:
+        self.species_order = [s.lhs for s in self.species_defs]
+        self.species_order.sort()
+        # Read observations from file; if there is a species order mentioned
+        # there, enforce it for the rest of the model:
+        self.obs, self.obs_order = mu.load_observations(self.obsfile)
+        if self.obs_order is None: # if observations don't label species
+            if len(self.obs[0]) - 1 != len(self.species_order): # if some are missing
+                raise mu.ProPPAException("""Only some species are observed --- 
+                    I cannot figure out which ones.""")
+            self.species_mapping = [(i,i) for i in range(len(self.species_order))]
+            self.obs_names = []
+            self.observed_species = [i for i in range(len(self.species_order))]
+        else: # rearrange the observations to match alphabetical order
+#            self.obs_inds,self.obs_names = mu.split_indices(self.obs_order,
+#                                                            self.species_order)
+            self.species_mapping,self.obs_mapping =  mu.split_indices(
+                                                            self.obs_order,
+                                                            self.species_order)
+            self.observed_species = [self.species_order[i] for (i,v) in self.species_mapping]
+            print(self.species_mapping)
+            print(self.obs_mapping)
+#            rearrange = [0] + [self.obs_order.index(name)+1 for name in self.species_order
+#                            if name in self.obs_order]
+#            self.obs = [[o[index] for index in rearrange] for o in self.obs]
+#            self.observed_species = [i for (i,s) in enumerate(self.species_order)
+#                                        if s in self.obs_order] 
+        # Updates (stoichiometry matrix):
+        self.updates,self.react_order = mu.get_updates(self,self.species_order)
+        # Initial state:
+        d = {p.species_name : p.amount.number for p in self.populations}
+        self.init_state = tuple(d[s_name] for s_name in self.species_order)
+        # Reorder reactions too:
+        d = {r.lhs : r for r in self.kinetic_laws}
+        self.kinetic_laws = [d[r_name] for r_name in self.react_order]
+#        self.kinetic_laws.sort(key=lambda r: self.react_order.index(r.lhs))
+        # Concrete parameters:
+        self.concrete = [(c.lhs,c.rhs.get_value()) for c in self.constants]
+        #should maybe change this in case of references to other variables?       
+    
+    def observation_mapping(self):
+        n = len(self.obs_order)
+        mapping = [None] * n
+        # map the species components to the right element of the state
+        for (i,index) in self.species_mapping:
+            mapping[i] = lambda p,index=index : (lambda s : s[index])
+        obs_evaluator = self.get_observables()
+        for (i,name) in self.obs_mapping:
+            mapping[i] = obs_evaluator[name]
+        return mapping
+            
 
     def reaction_functions(self):
         return self.reaction_functions4()
@@ -999,7 +1069,11 @@ class ParsedModel(object):
         #for pc in conf['parameters']:
         #    pc['proposal'] = lambda x: scipy.stats.norm(loc=x,scale=0.02)
         conf['observed_species'] = self.observed_species
-        file_conf = mu.read_config(self.conffile)
+#        if self.conffile is None:
+#            print("No configuration file provided. Using default configuration.")
+#            return
+        file_conf = (mu.read_config(self.conffile) if self.conffile is not None
+                        else {'proposals': {}})
         # apply all configuration options specified (except proposals):
         for alg_par in file_conf:
             if alg_par != 'proposals':
@@ -1029,7 +1103,6 @@ class ParsedModel(object):
                 conf['parameters'][ind]['proposal'] = prop_func
     
     def infer(self,n_samples=1000):
-        self.numerize()
         # prepare sampler
         try:
             sampler_type = samplers.get_sampler(self.algorithm)
@@ -1037,6 +1110,11 @@ class ParsedModel(object):
             print("Could not complete sampling. Problem:")
             print(ex)
             return None
+        if sampler_type.supports_enhanced:
+            self.numerize_enhanced()
+        else:
+            self.numerize()        
+        
         # get a basic configuration for the chosen sampler...
         conf = sampler_type.prepare_conf(self)
         # ...and now apply any configuration parameters the use has specified
@@ -1072,7 +1150,39 @@ class ParsedModel(object):
         test_props = sampler.test_propose(n_samples)
         return (test_props,conf)
 
+    
+    def get_observables(self):
+        species_names = list(self.species_order)
+        param_names = [p.lhs for p in self.uncertain]
+        conc_names = [c[0] for c in self.concrete]
+        conc_vals = [c[1] for c in self.concrete]
+#        if len(self.concrete) > 0:
+#            conc_names, conc_vals = zip(*self.concrete)
+#        else:
+#            conc_names = conc_vals = []
+        args_list = ",".join(conc_names+param_names+species_names)
+        
+        observable_funcs = {}
+        scope = {}
+        exec("from math import floor", scope)
+        for (i,o) in enumerate(self.observables):
+            fun_name = "observable_" + o.lhs
+            exec("""def {0}({1}):
+                        return {2}""".format(fun_name,args_list,
+                                            mu.as_string(o.rhs)),scope)
+            observable_funcs[o.lhs] = scope[fun_name]
 
+        def part_eval(f,part_args):
+            #return lambda more_args: f(*tuple(numpy.hstack((part_args,more_args))))
+            return lambda more_args: f(*tuple(list(part_args) + list(more_args)))
+
+        # For numerized models, kinetic law expressions will be sorted already
+        # so we can just assume the order is correct
+        # NB: the f=f named argument part is necessary to avoid problems with
+        # closures, so for the time being it stays even though it's ugly/weird
+        return {f : (lambda p,f=d: part_eval(f,list(conc_vals)+list(p)))
+                              for (f,d) in observable_funcs.items()}
+    
     def concretise(self,assignment):
         print("""Warning: concretising is irreversible. You may need to reload
                  the model for any future experiments""")

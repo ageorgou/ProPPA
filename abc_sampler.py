@@ -14,6 +14,8 @@ import utilities
 
 class ABCSampler(MetropolisSampler):
     
+    required_conf = MetropolisSampler.required_conf + ['eps']
+    
     def __init__(self,model,conf=None):
         if conf is not None:
             self.apply_configuration(conf)
@@ -29,9 +31,16 @@ class ABCSampler(MetropolisSampler):
         self.current_prior = np.prod([p.pdf(v) \
             for (p,v) in zip(self.priors,self.state)])
         self.current_dist = self.calculate_distance(self.state)
-        
+    
+    @staticmethod
+    def prepare_conf(model):
+        conf = super(ABCSampler,ABCSampler).prepare_conf(model)
+        conf['eps'] = 1
+        return conf
+    
     def set_model(self,model):
         self.model = model
+        #self.obs = self.fix_obs(model.obs)
         self.obs = model.obs
         self.updates = model.updates
     
@@ -66,6 +75,10 @@ class ABCSampler(MetropolisSampler):
         # get the distance according to the error metric specified
         return self.dist(sample_trace,self.obs)
 
+    def fix_obs(self,obs):
+        times = [t[0] for t in obs]
+        states = [t[1:] for t in obs]
+        return utilities.combine_times_states(times,states)
 
 if __name__ == "__main__":
     import scipy.stats as spst

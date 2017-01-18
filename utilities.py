@@ -50,7 +50,7 @@ def combine_times_states(times,states):
         print('Time and state list must have equal length.')
         return None
     else:
-        return zip(times,states)
+        return list(zip(times,states))
 
 def split_path(trace):
     return extract_times(trace), extract_states(trace)
