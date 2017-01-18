@@ -20,15 +20,18 @@ class EnhancedABCSampler(ABCSampler):
         self.obs_mapping = model.observation_mapping()
     
     def calculate_distance(self,proposed):
+        distance = 0
         # simulate the system
         rates = parameterise_rates(self.rate_funcs,proposed)
-        stop_time = self.obs[-1][0]
-        init_state = self.obs[0][1:]
-        sample_trace = gillespie(rates,stop_time,init_state,self.updates)
-        # get the distance according to the error metric specified
-        return self.dist(self.translate(sample_trace,list(proposed)),
-                         self.translate2(self.obs,list(proposed)))
-    
+        for ob in self.obs:
+            stop_time = ob[-1][0]
+            init_state = ob[0][1:]
+            sample_trace = gillespie(rates,stop_time,init_state,self.updates)
+            # get the distance according to the error metric specified
+            trans_trace = self.translate(sample_trace,list(proposed))
+            distance += self.dist(trans_trace,self.translate2(ob,list(proposed)))
+        return distance
+        
     def translate(self,trace,params):
         #times,states = [t[0] for t in trace], [t[1:] for t in trace]
         times,states = split_path(trace)

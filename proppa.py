@@ -22,7 +22,7 @@ import operator
 import math
 
 import pyparsing
-from pyparsing import Combine, Or, Optional, Literal, Suppress, MatchFirst
+from pyparsing import Combine,Or,Optional,Literal,Suppress,MatchFirst,delimitedList
 import numpy as np
 import scipy as sp
 from docopt import docopt
@@ -641,8 +641,9 @@ system_grammar = pyparsing.delimitedList(Population.grammar,
                                             delim="<*>")
 
 filename_characters = pyparsing.alphanums + "." + "_" + "/"
-observe_grammar = Literal("observe") + \
-               "(" + pyparsing.Word(filename_characters)("file") + ")" + ";"
+observe_grammar = (Literal("observe") + "(" + 
+               pyparsing.Word(filename_characters)("file") +
+               ")" + ";")
 infalg_grammar = Literal("infer") + "(" + identifier("alg") + ")" + ";"
 conf_grammar = Literal("configure") + \
                "(" + pyparsing.Word(filename_characters)("file") + ")" + ";"
@@ -670,7 +671,7 @@ class ParsedModel(object):
                SpeciesDefinition.list_grammar('species') +
                Optional(Observable.list_grammar('observables')) +
                pyparsing.Group(system_grammar)('populations') +
-               observe_grammar('obsfile') +
+               pyparsing.OneOrMore(pyparsing.Group(observe_grammar))('obsfile') +
                infalg_grammar('algorithm') +
                Optional(conf_grammar('conffile')) )
                
@@ -682,7 +683,7 @@ class ParsedModel(object):
         """ The parser action method for a ProPPA model. """
         return cls(tokens['constants'], tokens['rates'],
                    tokens['species'], tokens['populations'],
-                   tokens['obsfile']['file'],
+                   [t['file'] for t in tokens['obsfile']],
                    tokens['algorithm']['alg'],
                    tokens['conffile']['file'] if 'conffile' in tokens else None,
                    tokens['observables'] if 'observables' in tokens else [])
@@ -777,9 +778,13 @@ class ParsedModel(object):
         # Gather species names in alphabetical order:
         self.species_order = [s.lhs for s in self.species_defs]
         self.species_order.sort()
+        
         # Read observations from file; if there is a species order mentioned
         # there, enforce it for the rest of the model:
-        self.obs, self.obs_order = mu.load_observations(self.obsfile)
+        if len(self.obsfile) > 1:
+                raise mu.ProPPAException("""Only one observations file can be
+                    provided with this solver.""")            
+        self.obs, self.obs_order = mu.load_observations(self.obsfile[0])
         if self.obs_order is None: # if observations don't label species
             if len(self.obs[0]) - 1 != len(self.species_order): # if some are missing
                 raise mu.ProPPAException("""Only some species are observed --- 
@@ -810,28 +815,26 @@ class ParsedModel(object):
         self.species_order.sort()
         # Read observations from file; if there is a species order mentioned
         # there, enforce it for the rest of the model:
-        self.obs, self.obs_order = mu.load_observations(self.obsfile)
-        if self.obs_order is None: # if observations don't label species
-            if len(self.obs[0]) - 1 != len(self.species_order): # if some are missing
-                raise mu.ProPPAException("""Only some species are observed --- 
-                    I cannot figure out which ones.""")
-            self.species_mapping = [(i,i) for i in range(len(self.species_order))]
-            self.obs_names = []
-            self.observed_species = [i for i in range(len(self.species_order))]
-        else: # rearrange the observations to match alphabetical order
-#            self.obs_inds,self.obs_names = mu.split_indices(self.obs_order,
-#                                                            self.species_order)
-            self.species_mapping,self.obs_mapping =  mu.split_indices(
-                                                            self.obs_order,
-                                                            self.species_order)
-            self.observed_species = [self.species_order[i] for (i,v) in self.species_mapping]
-            print(self.species_mapping)
-            print(self.obs_mapping)
-#            rearrange = [0] + [self.obs_order.index(name)+1 for name in self.species_order
-#                            if name in self.obs_order]
-#            self.obs = [[o[index] for index in rearrange] for o in self.obs]
-#            self.observed_species = [i for (i,s) in enumerate(self.species_order)
-#                                        if s in self.obs_order] 
+        self.obs = []
+        for file in self.obsfile:
+            ### Here we are making a big assumption! (which should be checked)
+            #   that the species/observables are the same in every file, and in
+            #   the same order.
+            #TODO enforce this check, or at least provide a warning
+            exp_obs, self.obs_order = mu.load_observations(file)
+            if self.obs_order is None: # if observations don't label species
+                if len(exp_obs[0]) - 1 != len(self.species_order): # if some are missing
+                    raise mu.ProPPAException("""Only some species are observed --- 
+                        I cannot figure out which ones.""")
+                self.species_mapping = [(i,i) for i in range(len(self.species_order))]
+                self.obs_names = []
+                self.observed_species = [i for i in range(len(self.species_order))]
+            else:
+                self.species_mapping,self.obs_mapping =  mu.split_indices(
+                                                                self.obs_order,
+                                                                self.species_order)
+                self.observed_species = [self.species_order[i] for (i,v) in self.species_mapping]
+            self.obs.append(exp_obs)
         # Updates (stoichiometry matrix):
         self.updates,self.react_order = mu.get_updates(self,self.species_order)
         # Initial state:
