@@ -25,7 +25,8 @@ class EnhancedABCSampler(ABCSampler):
         rates = parameterise_rates(self.rate_funcs,proposed)
         for ob in self.obs:
             stop_time = ob[-1][0]
-            init_state = ob[0][1:]
+            #init_state = ob[0][1:]
+            init_state = self.model.init_state
             sample_trace = gillespie(rates,stop_time,init_state,self.updates)
             # get the distance according to the error metric specified
             trans_trace = self.translate(sample_trace,list(proposed))
