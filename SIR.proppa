@@ -15,5 +15,5 @@ R = recover >>;
 S[10]<*>I[5]<*>R[0]
 
 observe(obsSIR);
-infer(fluid);
+infer(direct);
 configure(configSIR);

@@ -13,6 +13,8 @@ from mh import MetropolisSampler
 
 class LNASampler(MetropolisSampler):
     
+    required_conf = MetropolisSampler.required_conf + ['obs_noise']
+    
     def __init__(self,model,conf):
         if conf is not None:
             self.apply_configuration(conf)
@@ -27,14 +29,14 @@ class LNASampler(MetropolisSampler):
     
     @staticmethod
     def prepare_conf(model):
-        conf = MetropolisSampler.apply_configuration(model)
+        conf = MetropolisSampler.prepare_conf(model)
         conf['rate_funcs'] = model.reaction_functions()
         conf['derivs'] = model.derivative_functions()
         conf['obs_noise'] = 0.1
         return conf
     
     def apply_configuration(self,conf):
-        MetropolisSampler.apply_configuration(conf)
+        super().apply_configuration(conf)
         self.derivs = conf['derivs']
         self.obs_noise = conf['obs_noise']
 

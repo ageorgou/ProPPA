@@ -30,7 +30,8 @@ class EnhancedABCSampler(ABCSampler):
             sample_trace = gillespie(rates,stop_time,init_state,self.updates)
             # get the distance according to the error metric specified
             trans_trace = self.translate(sample_trace,list(proposed))
-            distance += self.dist(trans_trace,self.translate2(ob,list(proposed)))
+            trans_ob = [(t[0],tuple(t[1:])) for t in ob]
+            distance += self.dist(trans_trace,trans_ob)
         return distance
         
     def translate(self,trace,params):

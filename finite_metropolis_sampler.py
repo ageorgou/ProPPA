@@ -38,7 +38,7 @@ class FiniteMetropolisSampler(MetropolisSampler):
     
     def set_model(self,model):
         self.model = model
-        self.obs,_ = load_observations(model.obsfile)
+        self.obs = model.obs
         #self.obs = np.array(self.obs)
         self.updates = model.updates
         #self.space = make_statespace(self.updates,self.obs[:,1:])
