@@ -1,0 +1,18 @@
+k_s = Uniform(0,1);
+k_r = Uniform(0,1);
+
+kineticLawOf spread : k_s * I * S;
+kineticLawOf stop1 : k_r * S * S;
+kineticLawOf stop2 : k_r * S * R;
+
+I = (spread,1) << ;
+
+S = (spread,1) >> + (stop1,1) << + (stop2,1) << ;
+
+R = (stop1,1) >> + (stop2,1) >> ;
+
+I[10] <*> S[5] <*> R[0]
+
+observe(obs_rumour);
+infer(ABC);
+configure(config_rumour);

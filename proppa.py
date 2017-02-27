@@ -20,6 +20,7 @@ import itertools
 import functools
 import operator
 import math
+import os.path
 
 import pyparsing
 from pyparsing import Combine,Or,Optional,Literal,Suppress,MatchFirst,delimitedList
@@ -783,8 +784,9 @@ class ParsedModel(object):
         # there, enforce it for the rest of the model:
         if len(self.obsfile) > 1:
                 raise mu.ProPPAException("""Only one observations file can be
-                    provided with this solver.""")            
-        self.obs, self.obs_order = mu.load_observations(self.obsfile[0])
+                    provided with this solver.""")
+        obs_filename = os.path.join(self.location,self.obsfile[0])
+        self.obs, self.obs_order = mu.load_observations(obs_filename)
         if self.obs_order is None: # if observations don't label species
             if len(self.obs[0]) - 1 != len(self.species_order): # if some are missing
                 raise mu.ProPPAException("""Only some species are observed --- 
@@ -821,7 +823,8 @@ class ParsedModel(object):
             #   that the species/observables are the same in every file, and in
             #   the same order.
             #TODO enforce this check, or at least provide a warning
-            exp_obs, self.obs_order = mu.load_observations(file)
+            obs_filename = os.path.join(self.location,file)
+            exp_obs, self.obs_order = mu.load_observations(obs_filename)
             if self.obs_order is None: # if observations don't label species
                 if len(exp_obs[0]) - 1 != len(self.species_order): # if some are missing
                     raise mu.ProPPAException("""Only some species are observed --- 
@@ -1075,7 +1078,7 @@ class ParsedModel(object):
 #        if self.conffile is None:
 #            print("No configuration file provided. Using default configuration.")
 #            return
-        file_conf = (mu.read_config(self.conffile) if self.conffile is not None
+        file_conf = (mu.read_config(self) if self.conffile is not None
                         else {'proposals': {}})
         # apply all configuration options specified (except proposals):
         for alg_par in file_conf:
@@ -1214,6 +1217,9 @@ def load_model(filename):
     with open(filename,"r") as modelfile:
         try:
             model = parse_model(modelfile.read())
+            # set the relative location of the model, so that the observation
+            # and configuration files are specified relative to that
+            model.location = os.path.dirname(filename)
         except pyparsing.ParseException as pe:
             print("Could not parse model:")
             print(pe)

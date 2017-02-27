@@ -1,0 +1,20 @@
+a = Gamma(4,10000);
+b = Gamma(4,10000);
+c = Gamma(4,10000);
+d= Gamma(4,10000);
+
+//rates
+kineticLawOf birthPred: a * X * Y;
+kineticLawOf deathPred: b * Y;
+kineticLawOf birthPrey: c * X;
+kineticLawOf deathPrey: d * X * Y;
+
+//system
+X = birthPrey >> + deathPrey << + birthPred (+); //prey
+Y = birthPred >> + deathPred << + deathPrey (+); //predator
+
+X[20]<*>Y[5]
+
+observe(obs_predPrey);
+infer(fluid);
+configure(config_predPrey);

@@ -1,0 +1,5 @@
+obs_noise = 16
+proposal a = 0.00001
+proposal b = 0.000005
+proposal c = 0.000005
+proposal d = 0.00001

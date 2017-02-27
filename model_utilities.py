@@ -7,6 +7,7 @@ Created on Sun Oct  4 22:16:44 2015
 
 from operator import add, sub, mul, truediv
 from math import floor
+import os.path
 import sys
 if sys.version_info[0] == 2:
     import ConfigParser as cp
@@ -171,7 +172,8 @@ def write_results(results,file):
        specified file."""
     np.savetxt(file,results)
 
-def read_config(file):
+def read_config(model):
+    file = os.path.join(model.location,model.conffile)
     with open(file) as contents:
         config = {}
         for line in contents:
