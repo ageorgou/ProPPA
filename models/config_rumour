@@ -1,4 +1,4 @@
-proposal k_s = 0.01
+proposal k_s = 0.05
 proposal k_r = 0.01
 n_samples = 100000
-eps = 7
+eps = 6

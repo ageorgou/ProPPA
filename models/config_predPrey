@@ -1,4 +1,4 @@
-obs_noise = 16
+obs_noise = 25
 proposal a = 0.00001
 proposal b = 0.000005
 proposal c = 0.000005
