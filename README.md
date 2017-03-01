@@ -7,10 +7,11 @@ ProPPA is a language for describing continuous-time stochastic systems where the
 ["Probabilistic Programming Process Algebra"](http://link.springer.com/chapter/10.1007/978-3-319-10696-0_21)
 by A. Georgoulas, J. Hillston and G. Sanguinetti
 
-
 The purpose of this tool is to enable automatic inference of the uncertain parameters through a number of methods. Additional functionality includes the ability to simulate models for different values of parameters, either before or after inference has been performed.
 
 Simple examples can be found in the [models](models) directory.
+
+This code is released under a BSD license. The parsing is based on (and includes code from) the [pepapot](https://github.com/allanderek/pepapot) repository by Allan Clarke. See the [license file](LICENSE) for more information.
 
 ## Usage
 python proppa.py model_name [-o output_file]

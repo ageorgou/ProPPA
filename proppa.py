@@ -11,8 +11,10 @@ Options:
     -h --help           Show this help message
 """
 
-"""A lot of this, especially the parsing, has been ported from the pepapot
-repository, written by Allan Clark.
+""" Copyright notice:
+A lot of this, especially the parsing, has been ported from the pepapot
+repository, written by Allan Clark, and subsequently modified and adapted.
+See the LICENSE file for more information.
 """
 
 
