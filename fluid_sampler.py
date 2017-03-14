@@ -15,6 +15,7 @@ from mh import MetropolisSampler
 class FluidSampler(MetropolisSampler):
     
     required_conf = MetropolisSampler.required_conf + ['obs_noise']
+    supports_enhanced = True
     
     def __init__(self,model,conf):
         self.all_proposed = []
@@ -45,14 +46,14 @@ class FluidSampler(MetropolisSampler):
         conf = MetropolisSampler.prepare_conf(model)
         conf['rate_funcs'] = model.reaction_functions()
         conf['obs_noise'] = 1
-        conf['observed_species'] = range(len(model.species_order))
+        #conf['observed_species'] = range(len(model.species_order))
         return conf
     
     def apply_configuration(self,conf):
         super(FluidSampler,self).apply_configuration(conf)
         #MetropolisSampler.apply_configuration(conf)
         self.obs_noise = conf['obs_noise']
-        self.observed_species = conf['observed_species']
+        #self.observed_species = conf['observed_species']
 
     
     def set_model(self,model):
@@ -62,7 +63,8 @@ class FluidSampler(MetropolisSampler):
 #        self.rate_funcs = model.reaction_functions()
 #        self.derivs = model.derivative_functions()
         self.init_state = model.init_state
-        self.obs = np.array(model.obs)
+        self.obs = [np.array(ob) for ob in model.obs]
+        self.obs_mapping = model.observation_mapping()
     
     def calculate_accept_prob(self,proposed):
         """Overriden to work with log-likelihood."""
@@ -79,18 +81,22 @@ class FluidSampler(MetropolisSampler):
         self.all_proposed.append((self.state,proposed))
         #rfs = parameterise_rates(self.rate_funcs,proposed)
         rfs = [f(proposed) for f in self.rate_funcs]
-        n_observed = len(self.observed_species)
-        invV = 1/self.obs_noise * np.eye(n_observed)        
-        times = self.obs[:,0]
+        #n_observed = len(self.observed_species)
+        n_observed = len(self.obs_mapping)
+        invV = 1/self.obs_noise * np.eye(n_observed)
         init_cond = self.init_state
-
-#        sols = odeint(self._dydt,init_cond,times,
-#                      args = (rfs,),hmax=0.001)
-        sols = odeint(self._dydt,init_cond,times,args = (rfs,))
-        diffs = self.obs[:,1:] - sols[:,self.observed_species]
-        #logL = np.sum(-1/2 * diffs.dot(invV).T.dot(diffs))
-        logL = -1/2 * np.sum((diffs*diffs).dot(invV))
-        self.all_like.append(logL)
+        logL = 0
+        for ob in self.obs:
+            times = ob[:,0]            
+    #        sols = odeint(self._dydt,init_cond,times,
+    #                      args = (rfs,),hmax=0.001)
+            sols = odeint(self._dydt,init_cond,times,args = (rfs,))
+            #diffs = ob[:,1:] - sols[:,self.observed_species]
+            # TODO is this too slow?
+            diffs = ob[:,1:] - np.array([m(sols.T) for m in self.obs_mapping]).T
+            #logL = np.sum(-1/2 * diffs.dot(invV).T.dot(diffs))
+            self.all_like.append(logL)
+            logL += -1/2 * np.sum((diffs*diffs).dot(invV))
         return logL
     
     def _dydt(self,y,t,rfs):
@@ -110,7 +116,7 @@ class FluidSampler(MetropolisSampler):
             if n % 500 == 0:
                 print("Taken",n,"samples")
         return self.samples
-     
+    
     def propose_state(self):
         #within_limits = [False] * self.n_pars
         proposed_all = [0] * self.n_pars
