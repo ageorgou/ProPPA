@@ -93,7 +93,8 @@ class FluidSampler(MetropolisSampler):
             sols = odeint(self._dydt,init_cond,times,args = (rfs,))
             #diffs = ob[:,1:] - sols[:,self.observed_species]
             # TODO is this too slow?
-            diffs = ob[:,1:] - np.array([m(sols.T) for m in self.obs_mapping]).T
+            diffs = (ob[:,1:] - 
+                    np.array([m(proposed)(sols.T) for m in self.obs_mapping]).T)
             #logL = np.sum(-1/2 * diffs.dot(invV).T.dot(diffs))
             self.all_like.append(logL)
             logL += -1/2 * np.sum((diffs*diffs).dot(invV))
