@@ -15,18 +15,6 @@ class LNASampler(MetropolisSampler):
     
     required_conf = MetropolisSampler.required_conf + ['obs_noise']
     
-    def __init__(self,model,conf):
-        if conf is not None:
-            self.apply_configuration(conf)
-        self.set_model(model)
-        self.n_pars = len(self.priors)
-        #self.obs_noise = conf['obs_noise']
-        self.samples = []
-        self.state = tuple(d.rvs() for d in self.priors)
-        self.current_prior = np.prod([p.pdf(v) \
-            for (p,v) in zip(self.priors,self.state)])
-        self.current_L = self.calculate_likelihood(self.state)
-    
     @staticmethod
     def prepare_conf(model):
         conf = MetropolisSampler.prepare_conf(model)
@@ -49,7 +37,7 @@ class LNASampler(MetropolisSampler):
 #        self.derivs = model.derivative_functions()
         self.obs = model.obs
     
-    def calculate_likelihood(self,proposed):
+    def _calculate_likelihood(self,proposed):
         N = self.n_species
         V = self.obs_noise * np.eye(N)
         t = self.obs[0][0]
@@ -66,7 +54,8 @@ class LNASampler(MetropolisSampler):
             
             sols = odeint(self._dydt,init_cond,[t,t_next],
                                 args=([f(proposed) for f in self.rate_funcs],
-                                      [[f(proposed) for f in fl] for fl in self.derivs]
+                                      [[f(proposed) for f in fl]
+                                          for fl in self.derivs]
                                      ),
                                 hmax = 0.001
                               )

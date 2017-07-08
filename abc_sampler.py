@@ -30,7 +30,7 @@ class ABCSampler(MetropolisSampler):
         self.state = tuple(d.rvs() for d in self.priors)
         self.current_prior = np.prod([p.pdf(v) \
             for (p,v) in zip(self.priors,self.state)])
-        self.current_dist = self.calculate_distance(self.state)
+        self.current_dist = self._calculate_distance(self.state)
     
     @staticmethod
     def prepare_conf(model):
@@ -46,7 +46,7 @@ class ABCSampler(MetropolisSampler):
     
     def take_sample(self,append=True):
         proposed = self.propose_state()
-        acceptance_prob = self.calculate_accept_prob(proposed)
+        acceptance_prob = self._calculate_accept_prob(proposed)
         if np.random.rand() <= acceptance_prob:
             self.current_prior = self.proposed_prior
             self.current_dist = self.proposed_dist
@@ -54,19 +54,17 @@ class ABCSampler(MetropolisSampler):
         if append:
             self.samples.append(self.state)
     
-    def calculate_accept_prob(self,proposed):
-        self.proposed_dist = self.calculate_distance(proposed)
+    def _calculate_accept_prob(self,proposed):
+        self.proposed_dist = self._calculate_distance(proposed)
         if self.proposed_dist < self.eps:
             self.proposed_prior = np.prod([p.pdf(v) 
                 for (p,v) in zip(self.priors,proposed)])
             ratio = self.proposed_prior / self.current_prior
-#            ratio = (self.proposed_prior * self.proposed_dist) / \
-#                        (self.current_prior * self.current_dist)
             return ratio
         else:
             return 0
         
-    def calculate_distance(self,proposed):
+    def _calculate_distance(self,proposed):
         # simulate the system
         rates = parameterise_rates(self.rate_funcs,proposed)
         stop_time = self.obs[-1][0]

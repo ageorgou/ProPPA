@@ -19,7 +19,7 @@ class EnhancedABCSampler(ABCSampler):
         super().set_model(model)
         self.obs_mapping = model.observation_mapping()
     
-    def calculate_distance(self,proposed):
+    def _calculate_distance(self,proposed):
         distance = 0
         # simulate the system
         rates = parameterise_rates(self.rate_funcs,proposed)

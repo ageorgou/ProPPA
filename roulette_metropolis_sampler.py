@@ -14,16 +14,6 @@ from mh import MetropolisSampler
 from roulette import Roulette
 
 class RouletteMetropolisSampler(MetropolisSampler):
-    def __init__(self,model,conf=None):
-        self.set_model(model)
-        if conf is not None:
-            self.apply_configuration(conf)
-        self.n_pars = len(self.priors)
-        self.state = tuple(d.rvs() for d in self.priors)
-        self.samples = []
-        self.current_prior = np.prod([p.pdf(v) \
-            for (p,v) in zip(self.priors,self.state)])
-        self.current_L = self.calculate_likelihood(self.state)
     
     def set_model(self,model):
         self.model = model
@@ -33,7 +23,7 @@ class RouletteMetropolisSampler(MetropolisSampler):
                             for i in range(len(self.obs)-1) ]
         self.max_trunc = [0] * (len(self.obs)-1)
     
-    def calculate_likelihood(self,pars):
+    def _calculate_likelihood(self,pars):
 #        # Choose truncation point via Russian Roulette
 #        roul = Roulette(Roulette.Geometric(0.95))
 #        roul.run()

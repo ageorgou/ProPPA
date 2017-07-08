@@ -18,35 +18,20 @@ import scipy.stats as spst
 
 from utilities import parameterise_rates,make_statespace,make_generator2
 from utilities import find_states, transient_prob
-from model_utilities import load_observations, get_updates
 from mh import MetropolisSampler
 import proppa
 
 class FiniteMetropolisSampler(MetropolisSampler):
-    #required_conf = ['proposal'] # same as superclass
-    
-    def __init__(self,model,conf):
-        self.set_model(model)
-        if conf is not None:
-            self.apply_configuration(conf)
-        self.n_pars = len(self.priors)
-        self.state = tuple(d.rvs() for d in self.priors)
-        self.samples = []
-        self.current_prior = np.prod([p.pdf(v) \
-            for (p,v) in zip(self.priors,self.state)])
-        self.current_L = self.calculate_likelihood(self.state)
-    
+        
     def set_model(self,model):
         self.model = model
         self.obs = model.obs
-        #self.obs = np.array(self.obs)
         self.updates = model.updates
-        #self.space = make_statespace(self.updates,self.obs[:,1:])
         self.space = make_statespace(self.updates,
                                      [tuple(o[1:]) for o in self.obs])
     
     
-    def calculate_likelihood(self,pars):
+    def _calculate_likelihood(self,pars):
         rfs = parameterise_rates(self.rate_funcs,pars)
         space = self.space
         Q = make_generator2(self.space,rfs,self.updates)
@@ -97,9 +82,3 @@ if __name__ == "__main__":
     #sampler.set_model(model)
     n_samples = 1000
     samples = sampler.gather_samples(n_samples)
-#    sampler.calculate_likelihood = \
-#            lambda self,pars: calculate_likelihood(pars,self.obs)
-
-#    def rate_functions2(params):
-#        return [lambda s: params[0]*s[0]*s[1],
-#                lambda s: params[1]*s[1]]
