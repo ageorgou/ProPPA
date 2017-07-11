@@ -8,6 +8,7 @@ Usage:
     
 Options:
     -o FILE --out FILE  Output file (default: <model_file>_out)
+    --seed SEED         Seed for the random number generator
     -h --help           Show this help message
 """
 
@@ -1247,9 +1248,14 @@ def analyse_proppa_file(filename,arguments):
     return
             
 
+def set_seed(seed):
+    np.random.seed(seed)
+
 if __name__ == "__main__":
     #import sys
     arguments = docopt(__doc__)
+    if arguments['--seed']:
+        set_seed(arguments['SEED'])
 
     model_name = arguments['<model_file>']
     model = load_model(model_name)
