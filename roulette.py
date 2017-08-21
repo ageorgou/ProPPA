@@ -2,13 +2,14 @@
 """
 Created on Thu Sep 24 17:35:36 2015
 
-A class to hold the results of a Russian Roulette-style truncation strategy.
 @author: s1050238
 """
 
 import numpy as np
 
 class Roulette(object):
+    """A class describing a Russian Roulette-style truncation strategy."""
+
     def __init__(self,scheme=None):
         self.n_terms = 0
         self.probs = []
@@ -26,13 +27,15 @@ class Roulette(object):
                 self.n_terms = self.n_terms + 1
                 self.probs.append(stop_prob)
     
-    """
-    A method for creating roulette schemes with geometrically reducing
-    acceptance probability. At every iteration, the generator returns the
-    stopping probability, starting with 0.
-    """
+
     @staticmethod
     def Geometric(reduction_factor):
+        """Create a Roulette scheme with geometric acceptance probabilities.
+        
+        A method for creating roulette schemes with geometrically reducing
+        acceptance probability. At every iteration, the generator returns the
+        stopping probability, starting with 0.
+        """
         prob = 1 # probability to continue
         while True:
             yield 1 - prob

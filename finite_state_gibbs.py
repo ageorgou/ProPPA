@@ -22,7 +22,7 @@ import model_utilities as mu
 class RaoTehGibbsSampler(MetropolisSampler):
     
     def __init__(self,model,conf):
-        self.set_model(model)
+        self._set_model(model)
         self.apply_configuration(conf)
         self.n_pars = len(self.hyper[0])
         #TODO: vectorise / broadcast
@@ -31,7 +31,7 @@ class RaoTehGibbsSampler(MetropolisSampler):
         self.samples = []
         self.space = make_statespace(self.updates,
                                      [tuple(o) for o in self.obs[:,1:]])
-    def set_model(self,model):
+    def _set_model(self,model):
         self.model = model
         self.obs = np.array(model.obs)
         self.updates = model.updates
@@ -46,12 +46,14 @@ class RaoTehGibbsSampler(MetropolisSampler):
         self.rate_funcs = conf['rate_funcs']
     
     def take_sample(self,append=True):
+        """Overriden so that proposed samples are always accepted."""
         self.state = self.propose_state()
         if append:
             self.samples.append(self.state)
         pass
     
-    def propose_state(self):
+    def _propose_state(self):
+        """Propose parameters by sampling from the conditional posterior."""
         # make generator
         # sample path
         # add self-loops
@@ -75,8 +77,10 @@ class RaoTehGibbsSampler(MetropolisSampler):
         
         return proposed
     
-    def calculate_accept_prob(self,proposed):
+    def _calculate_accept_prob(self,proposed):
+        """Overriden to always return 1, although the value is not used."""
         return 1
+
 
 def _discretise_generator(A):
     exit_rate = 1.1 * max(-np.diag(A))
@@ -136,6 +140,7 @@ def _sample_gamma(hypers):
     a, b = hypers #a in top row, b in bottom
     return sp.stats.gamma.rvs(a,scale=1/b)
 
+
 def _gamma_updates(times,states,rate_funcs,updates):
         #TODO: check whether numpy can make this faster (vectorised/broadcast?)
         a_updates = np.zeros(len(rate_funcs))
@@ -156,6 +161,7 @@ def _gamma_updates(times,states,rate_funcs,updates):
             b_updates = props*dt[n] + b_updates
             n = n + 1
         return a_updates,b_updates
+
  
 def _FFBS(P,space,times,obs):
     n_states = P.shape[0]
@@ -207,6 +213,7 @@ def _FFBS(P,space,times,obs):
         i = i - 1
 
     return sample
+
     
 def _obs_probs(obs,space):
     D = 1E-6
@@ -215,6 +222,7 @@ def _obs_probs(obs,space):
     p = 1 / (2**dists + D)
     p = p / sum(p) # TODO: do we need to add an entry for an absorbing state?
     return p
+
     
 if __name__ == "__main__":
     # set up model

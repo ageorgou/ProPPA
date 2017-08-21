@@ -12,11 +12,18 @@ from utilities import gillespie,parameterise_rates,split_path,combine_times_stat
 #from model_utilities import load_observations,get_updates
 
 class EnhancedABCSampler(ABCSampler):
+    """A variant of the ABC sampler supporting enhanced features.
+    
+    This class works exactly the same way as the standard ABC sampler, with two
+    differences: it can consider multiple observation files, and it supports
+    complex observables (specified as functions of the species, rather than
+    direct measurements of the species themselves).
+    """
     
     supports_enhanced = True
         
-    def set_model(self,model):
-        super().set_model(model)
+    def _set_model(self,model):
+        super()._set_model(model)
         self.obs_mapping = model.observation_mapping()
     
     def _calculate_distance(self,proposed):
@@ -25,16 +32,16 @@ class EnhancedABCSampler(ABCSampler):
         rates = parameterise_rates(self.rate_funcs,proposed)
         for ob in self.obs:
             stop_time = ob[-1][0]
-            #init_state = ob[0][1:]
             init_state = self.model.init_state
             sample_trace = gillespie(rates,stop_time,init_state,self.updates)
             # get the distance according to the error metric specified
-            trans_trace = self.translate(sample_trace,list(proposed))
+            trans_trace = self._translate(sample_trace,list(proposed))
             trans_ob = [(t[0],tuple(t[1:])) for t in ob]
             distance += self.dist(trans_trace,trans_ob)
         return distance
         
-    def translate(self,trace,params):
+    def _translate(self,trace,params):
+        """Map a simulated trace to the corresponding observable quantities."""
         #times,states = [t[0] for t in trace], [t[1:] for t in trace]
         times,states = split_path(trace)
         translated_states = [[m(params)(state) for m in self.obs_mapping]
@@ -42,7 +49,8 @@ class EnhancedABCSampler(ABCSampler):
         return combine_times_states(times,translated_states)
         #return [[t] + s for (t,s) in zip(times,translated_states)]
 
-    def translate2(self,trace,params):
+    def _translate2(self,trace,params):
+        """Unused?"""
         times,states = [t[0] for t in trace], [tuple(t[1:]) for t in trace]
         #times,states = split_path(trace)
         translated_states = [[m(params)(state) for m in self.obs_mapping]

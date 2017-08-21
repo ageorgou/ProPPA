@@ -14,8 +14,18 @@ from mh import MetropolisSampler
 from roulette import Roulette
 
 class RouletteMetropolisSampler(MetropolisSampler):
+    """A sampler working with random truncations of the state-space.
     
-    def set_model(self,model):
+    This sampler is appropriate for large or infinite-state systems. It
+    computes an unbiased estimate of the likelihood by randomly truncating the
+    state-space and calculating the exact solution (via matrix exponentiation)
+    for the resulting finite spaces. The estimates are used in a pseudomarginal
+    Metropolis-Hastings algorithm. The approach is explained in the paper
+    'Unbiased Bayesian inference for population Markov jump processes via
+    random truncations' by Georgoulas et al. (doi: 10.1007/s11222-016-9667-9).
+    """
+    
+    def _set_model(self,model):
         self.model = model
         self.obs,_ = mu.load_observations(model.obsfile)
         self.updates = mu.get_updates(model)
@@ -24,6 +34,7 @@ class RouletteMetropolisSampler(MetropolisSampler):
         self.max_trunc = [0] * (len(self.obs)-1)
     
     def _calculate_likelihood(self,pars):
+        """Overriden to compute an unbiased estimate of the likelihood."""
 #        # Choose truncation point via Russian Roulette
 #        roul = Roulette(Roulette.Geometric(0.95))
 #        roul.run()

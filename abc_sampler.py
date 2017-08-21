@@ -13,6 +13,17 @@ import utilities
 #from model_utilities import load_observations,get_updates
 
 class ABCSampler(MetropolisSampler):
+    """A simulation-based sampler which avoids likelihood computations.
+    
+    This class provides a likelihood-free alternative to the other samplers in
+    the framework. It is particularly suited to large systems, where computing
+    the likelihood is infeasiable or impractical. Instead, it follows an ABC
+    (Approximate Bayesian Computation) approach: for each parameter, the system
+    is simulated and a distance is calculated betwween the simulated output and
+    the obesrvation. If this distance is small enough (lower than the 'eps'
+    configuration parameter), the parameter sample is accepted with a certain
+    probability, otherwise it is rejected.
+    """
     
     required_conf = MetropolisSampler.required_conf + ['eps']
     
@@ -26,26 +37,26 @@ class ABCSampler(MetropolisSampler):
             self.dist = conf['dist']
         else:
             self.dist = utilities.euclid_trace_dist
-        self.set_model(model)
+        self._set_model(model)
         self.state = tuple(d.rvs() for d in self.priors)
-        self.current_prior = np.prod([p.pdf(v) \
-            for (p,v) in zip(self.priors,self.state)])
+        self.current_prior = np.prod(
+                [p.pdf(v) for (p,v) in zip(self.priors,self.state)])
         self.current_dist = self._calculate_distance(self.state)
     
     @staticmethod
     def prepare_conf(model):
-        conf = super(ABCSampler,ABCSampler).prepare_conf(model)
+        conf = super().prepare_conf(model)
         conf['eps'] = 1
         return conf
     
-    def set_model(self,model):
+    def _set_model(self,model):
         self.model = model
         #self.obs = self.fix_obs(model.obs)
         self.obs = model.obs
         self.updates = model.updates
     
     def take_sample(self,append=True):
-        proposed = self.propose_state()
+        proposed = self._propose_state()
         acceptance_prob = self._calculate_accept_prob(proposed)
         if np.random.rand() <= acceptance_prob:
             self.current_prior = self.proposed_prior
@@ -55,16 +66,23 @@ class ABCSampler(MetropolisSampler):
             self.samples.append(self.state)
     
     def _calculate_accept_prob(self,proposed):
+        """Overriden to use distance instead of likelihood (following ABC)."""
         self.proposed_dist = self._calculate_distance(proposed)
         if self.proposed_dist < self.eps:
-            self.proposed_prior = np.prod([p.pdf(v) 
-                for (p,v) in zip(self.priors,proposed)])
+            self.proposed_prior = np.prod(
+                    [p.pdf(v) for (p,v) in zip(self.priors,proposed)])
             ratio = self.proposed_prior / self.current_prior
             return ratio
-        else:
+        else: # if the distance is higher than eps, always reject the proposal
             return 0
         
     def _calculate_distance(self,proposed):
+        """Compute the distance metric for a proposed parameter value.
+        
+        Given a proposed parameter set, this simulates the system to obtain a 
+        trace. The trace is then compared to the observation using the chosen
+        distance metric, and this distance is returned.
+        """
         # simulate the system
         rates = parameterise_rates(self.rate_funcs,proposed)
         stop_time = self.obs[-1][0]
@@ -74,6 +92,7 @@ class ABCSampler(MetropolisSampler):
         return self.dist(sample_trace,self.obs)
 
     def fix_obs(self,obs):
+        """Unused?"""
         times = [t[0] for t in obs]
         states = [t[1:] for t in obs]
         return utilities.combine_times_states(times,states)

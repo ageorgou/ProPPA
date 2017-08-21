@@ -16,13 +16,21 @@ import numpy as np
 from numpy import inf
 import scipy.stats as spst
 
+import proppa
 from utilities import parameterise_rates,make_statespace,make_generator2
 from utilities import find_states, transient_prob
 from mh import MetropolisSampler
-import proppa
 
 class FiniteMetropolisSampler(MetropolisSampler):
-        
+    """A sampler for finite systems using exact likelihood computation.
+    
+    This class computes the likelihood directly via matrix exponentiation. This
+    method is exact, but only applicable to finite state-spaces. It may become
+    very expensive when the state-space is very large; in these cases,
+    approximate methods such as FluidSampler or ABCSampler may be a better
+    option.
+    """
+    
     def set_model(self,model):
         self.model = model
         self.obs = model.obs
@@ -33,13 +41,14 @@ class FiniteMetropolisSampler(MetropolisSampler):
     
     def _calculate_likelihood(self,pars):
         rfs = parameterise_rates(self.rate_funcs,pars)
-        space = self.space
         Q = make_generator2(self.space,rfs,self.updates)
-        inds = find_states([tuple(o[1:]) for o in self.obs],space)
+        # inds will hold the indices of the observed states (the rows of the 
+        # state-space to which they correspond)
+        inds = find_states([tuple(o[1:]) for o in self.obs],self.space)
         L = 1
         i = 0
         while i < len(self.obs) - 1:
-            init_prob = np.zeros(len(space))
+            init_prob = np.zeros(len(self.space))
             init_prob[inds[i]] = 1
             Dt = self.obs[i+1][0] - self.obs[i][0]
             final_prob = transient_prob(Q,Dt,init_prob)
