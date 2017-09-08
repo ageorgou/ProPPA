@@ -3,8 +3,8 @@
 ProPPA - Probabilistic Programming Process Algebra
 
 Usage:
-    proppa.py <model_file> [--out <output_file>]
-    proppa.py <model_file> infer [--out output_file]
+    proppa.py <model_file> [options]
+    proppa.py <model_file> infer [options]
     
 Options:
     -o FILE --out FILE  Output file (default: <model_file>_out)
@@ -1229,7 +1229,8 @@ def load_model(filename):
             return
     return model
 
-def analyse_proppa_file(filename,arguments):
+
+def analyse_proppa_file(filename, arguments):
     """ The main interface method for the analysing of ProPPA files. """
     with open(filename, "r") as modelfile:
         try:
@@ -1246,16 +1247,21 @@ def analyse_proppa_file(filename,arguments):
     obs,names = mu.load_observations(model.obsfile)
     # and then other things we don't care about right now
     return
-            
+   
 
 def set_seed(seed):
+    print("Setting seed to {}.".format(seed))
     np.random.seed(seed)
 
 if __name__ == "__main__":
-    #import sys
     arguments = docopt(__doc__)
-    if arguments['--seed']:
-        set_seed(arguments['SEED'])
+    if '--seed' in arguments:
+        try:
+            int_seed = int(arguments['--seed'])
+        except ValueError:
+            print("Could not understand seed {}!".format(arguments['--seed']))
+        else:
+            set_seed(int_seed)
 
     model_name = arguments['<model_file>']
     model = load_model(model_name)
