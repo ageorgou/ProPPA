@@ -45,7 +45,7 @@ class ABCSampler(MetropolisSampler):
     
     @staticmethod
     def prepare_conf(model):
-        conf = super().prepare_conf(model)
+        conf = super(ABCSampler, ABCSampler).prepare_conf(model)
         conf['eps'] = 1
         return conf
     
