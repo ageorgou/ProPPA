@@ -1255,7 +1255,7 @@ def set_seed(seed):
 
 if __name__ == "__main__":
     arguments = docopt(__doc__)
-    if '--seed' in arguments:
+    if '--seed' in arguments and arguments['--seed'] is not None:
         try:
             int_seed = int(arguments['--seed'])
         except ValueError:
