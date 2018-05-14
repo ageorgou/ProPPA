@@ -898,7 +898,7 @@ class ParsedModel(object):
         
         kinetic_funcs = []
         scope = {}
-        exec("from math import floor", scope)
+        exec("from math import exp, floor", scope)
         for (i,r) in enumerate(self.kinetic_laws):
             exec("""def kinetic_func_{0}({1}):
                         return {2}""".format(i,args_list,mu.as_string(r.rhs)),
@@ -929,7 +929,7 @@ class ParsedModel(object):
         
         kinetic_funcs = []
         scope = {}
-        exec("from math import floor", scope)
+        exec("from math import exp, floor", scope)
         for (i,r) in enumerate(self.kinetic_laws):
             exec("""def kinetic_func_{0}({1}):
                         return {2}""".format(i,args_list,mu.as_string(r.rhs)),
@@ -1173,7 +1173,7 @@ class ParsedModel(object):
         
         observable_funcs = {}
         scope = {}
-        exec("from math import floor", scope)
+        exec("from math import exp, floor", scope)
         for (i,o) in enumerate(self.observables):
             fun_name = "observable_" + o.lhs
             exec("""def {0}({1}):

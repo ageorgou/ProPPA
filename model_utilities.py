@@ -6,7 +6,6 @@ Created on Sun Oct  4 22:16:44 2015
 """
 
 from operator import add, sub, mul, truediv
-from math import floor
 import os.path
 import sys
 if sys.version_info[0] == 2:
